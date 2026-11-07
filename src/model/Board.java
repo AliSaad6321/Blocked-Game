@@ -1,167 +1,134 @@
 package model;
 
-/**
- * Stores the occupied cells of the 8 by 8 game board.
- */
-public class Board {
-    public static final int SIZE = 8;
+import java.awt.Point;
+import java.util.ArrayList;
+import java.util.List;
 
-    private final int[][] cells;
+public class Board {
+    public static final int GRID_SIZE = 8;
+    private final int[][] grid;
 
     public Board() {
-        cells = new int[SIZE][SIZE];
+        this.grid = new int[GRID_SIZE][GRID_SIZE];
+        clearBoard();
     }
 
-    public int getCell(int row, int column) {
-        validateBoardPosition(row, column);
-        return cells[row][column];
+    public void clearBoard() {
+        for (int r = 0; r < GRID_SIZE; r++) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                grid[r][c] = 0;
+            }
+        }
     }
 
-    public boolean isWithinBounds(int row, int column) {
-        return row >= 0 && row < SIZE && column >= 0 && column < SIZE;
+    public int getCell(int r, int c) {
+        if (isValidPosition(r, c)) {
+            return grid[r][c];
+        }
+        return -1;
     }
 
-    /**
-     * Checks whether every occupied shape cell fits on an empty board cell.
-     */
-    public boolean canPlace(int[][] shape, int startRow, int startColumn) {
-        validateShape(shape);
+    public boolean isValidPosition(int r, int c) {
+        return r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
+    }
 
-        for (int row = 0; row < shape.length; row++) {
-            for (int column = 0; column < shape[row].length; column++) {
-                if (shape[row][column] == 0) {
-                    continue;
+    public boolean canPlacePiece(BlockPiece piece, int targetRow, int targetCol) {
+        if (piece == null) return false;
+        int[][] shape = piece.getShape();
+
+        for (int r = 0; r < shape.length; r++) {
+            for (int c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] > 0) {
+                    int gridR = targetRow + r;
+                    int gridC = targetCol + c;
+
+                    if (!isValidPosition(gridR, gridC)) return false;
+                    if (grid[gridR][gridC] != 0) return false;
                 }
-
-                int boardRow = startRow + row;
-                int boardColumn = startColumn + column;
-
-                if (!isWithinBounds(boardRow, boardColumn)
-                        || cells[boardRow][boardColumn] != 0) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Places a shape when it fits, returning false when the placement is invalid.
-     */
-    public boolean place(int[][] shape, int startRow, int startColumn, int colorId) {
-        if (colorId <= 0) {
-            throw new IllegalArgumentException("Color ID must be positive.");
-        }
-
-        if (!canPlace(shape, startRow, startColumn)) {
-            return false;
-        }
-
-        for (int row = 0; row < shape.length; row++) {
-            for (int column = 0; column < shape[row].length; column++) {
-                if (shape[row][column] != 0) {
-                    cells[startRow + row][startColumn + column] = colorId;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Clears all completed rows and columns from the same board state.
-     */
-    public int clearCompletedLines() {
-        boolean[] completedRows = new boolean[SIZE];
-        boolean[] completedColumns = new boolean[SIZE];
-        int completedLineCount = 0;
-
-        for (int row = 0; row < SIZE; row++) {
-            completedRows[row] = isRowComplete(row);
-            if (completedRows[row]) {
-                completedLineCount++;
-            }
-        }
-
-        for (int column = 0; column < SIZE; column++) {
-            completedColumns[column] = isColumnComplete(column);
-            if (completedColumns[column]) {
-                completedLineCount++;
-            }
-        }
-
-        for (int row = 0; row < SIZE; row++) {
-            for (int column = 0; column < SIZE; column++) {
-                if (completedRows[row] || completedColumns[column]) {
-                    cells[row][column] = 0;
-                }
-            }
-        }
-
-        return completedLineCount;
-    }
-
-    public void clear() {
-        for (int row = 0; row < SIZE; row++) {
-            for (int column = 0; column < SIZE; column++) {
-                cells[row][column] = 0;
-            }
-        }
-    }
-
-    private boolean isRowComplete(int row) {
-        for (int column = 0; column < SIZE; column++) {
-            if (cells[row][column] == 0) {
-                return false;
             }
         }
         return true;
     }
 
-    private boolean isColumnComplete(int column) {
-        for (int row = 0; row < SIZE; row++) {
-            if (cells[row][column] == 0) {
-                return false;
+    public boolean placePiece(BlockPiece piece, int targetRow, int targetCol) {
+        if (!canPlacePiece(piece, targetRow, targetCol)) return false;
+
+        int[][] shape = piece.getShape();
+        for (int r = 0; r < shape.length; r++) {
+            for (int c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] > 0) {
+                    grid[targetRow + r][targetCol + c] = piece.getColorId();
+                }
             }
         }
         return true;
     }
 
-    private void validateBoardPosition(int row, int column) {
-        if (!isWithinBounds(row, column)) {
-            throw new IndexOutOfBoundsException("Board position is outside the 8 by 8 grid.");
-        }
-    }
+    public LineClearResult processLineClears() {
+        List<Integer> fullRows = new ArrayList<>();
+        List<Integer> fullCols = new ArrayList<>();
 
-    private void validateShape(int[][] shape) {
-        if (shape == null || shape.length == 0) {
-            throw new IllegalArgumentException("Shape must contain at least one row.");
-        }
-
-        int columnCount = -1;
-        boolean hasOccupiedCell = false;
-
-        for (int[] row : shape) {
-            if (row == null || row.length == 0) {
-                throw new IllegalArgumentException("Shape rows must contain at least one cell.");
+        for (int r = 0; r < GRID_SIZE; r++) {
+            boolean full = true;
+            for (int c = 0; c < GRID_SIZE; c++) {
+                if (grid[r][c] == 0) { full = false; break; }
             }
+            if (full) fullRows.add(r);
+        }
 
-            if (columnCount == -1) {
-                columnCount = row.length;
-            } else if (row.length != columnCount) {
-                throw new IllegalArgumentException("Shape rows must have equal lengths.");
+        for (int c = 0; c < GRID_SIZE; c++) {
+            boolean full = true;
+            for (int r = 0; r < GRID_SIZE; r++) {
+                if (grid[r][c] == 0) { full = false; break; }
             }
+            if (full) fullCols.add(c);
+        }
 
-            for (int cell : row) {
-                if (cell != 0) {
-                    hasOccupiedCell = true;
+        List<Point> clearedCells = new ArrayList<>();
+        for (int r : fullRows) {
+            for (int c = 0; c < GRID_SIZE; c++) {
+                if (grid[r][c] != 0) {
+                    grid[r][c] = 0;
+                    clearedCells.add(new Point(c, r));
                 }
             }
         }
 
-        if (!hasOccupiedCell) {
-            throw new IllegalArgumentException("Shape must contain an occupied cell.");
+        for (int c : fullCols) {
+            for (int r = 0; r < GRID_SIZE; r++) {
+                if (grid[r][c] != 0) {
+                    grid[r][c] = 0;
+                    clearedCells.add(new Point(c, r));
+                }
+            }
+        }
+
+        return new LineClearResult(fullRows.size() + fullCols.size(), clearedCells, fullRows, fullCols);
+    }
+
+    public boolean canAnyPieceFit(BlockPiece[] tray) {
+        for (BlockPiece piece : tray) {
+            if (piece == null) continue;
+            for (int r = 0; r < GRID_SIZE; r++) {
+                for (int c = 0; c < GRID_SIZE; c++) {
+                    if (canPlacePiece(piece, r, c)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static class LineClearResult {
+        public final int linesCleared;
+        public final List<Point> clearedCells;
+        public final List<Integer> clearedRows;
+        public final List<Integer> clearedCols;
+
+        public LineClearResult(int linesCleared, List<Point> clearedCells, List<Integer> clearedRows, List<Integer> clearedCols) {
+            this.linesCleared = linesCleared;
+            this.clearedCells = clearedCells;
+            this.clearedRows = clearedRows;
+            this.clearedCols = clearedCols;
         }
     }
 }
