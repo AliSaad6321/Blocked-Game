@@ -1,81 +1,43 @@
 package model;
 
-/**
- * Represents a block shape and its board color.
- */
+import java.awt.Color;
+
 public class BlockPiece {
     private final int[][] shape;
+    private final Color color;
     private final int colorId;
+    private final String name;
 
-    public BlockPiece(int[][] shape, int colorId) {
-        if (colorId <= 0) {
-            throw new IllegalArgumentException("Color ID must be positive.");
-        }
-
-        this.shape = copyAndValidateShape(shape);
+    public BlockPiece(int[][] shape, Color color, int colorId, String name) {
+        this.shape = shape;
+        this.color = color;
         this.colorId = colorId;
+        this.name = name;
     }
 
-    public int getColorId() {
-        return colorId;
-    }
+    public int[][] getShape() { return shape; }
+    public Color getColor() { return color; }
+    public int getColorId() { return colorId; }
+    public String getName() { return name; }
 
-    public int getHeight() {
-        return shape.length;
-    }
+    public int getRows() { return shape.length; }
+    public int getCols() { return shape[0].length; }
 
-    public int getWidth() {
-        return shape[0].length;
-    }
-
-    public boolean isOccupied(int row, int column) {
-        if (row < 0 || row >= getHeight() || column < 0 || column >= getWidth()) {
-            throw new IndexOutOfBoundsException("Shape position is outside the piece.");
-        }
-        return shape[row][column] != 0;
-    }
-
-    public int[][] getShape() {
-        int[][] shapeCopy = new int[shape.length][shape[0].length];
-
-        for (int row = 0; row < shape.length; row++) {
-            System.arraycopy(shape[row], 0, shapeCopy[row], 0, shape[row].length);
-        }
-
-        return shapeCopy;
-    }
-
-    private int[][] copyAndValidateShape(int[][] source) {
-        if (source == null || source.length == 0) {
-            throw new IllegalArgumentException("Shape must contain at least one row.");
-        }
-
-        int width = -1;
-        boolean hasOccupiedCell = false;
-        int[][] copy = new int[source.length][];
-
-        for (int row = 0; row < source.length; row++) {
-            if (source[row] == null || source[row].length == 0) {
-                throw new IllegalArgumentException("Shape rows must contain at least one cell.");
-            }
-
-            if (width == -1) {
-                width = source[row].length;
-            } else if (source[row].length != width) {
-                throw new IllegalArgumentException("Shape rows must have equal lengths.");
-            }
-
-            copy[row] = new int[width];
-            for (int column = 0; column < width; column++) {
-                copy[row][column] = source[row][column] == 0 ? 0 : 1;
-                hasOccupiedCell |= copy[row][column] != 0;
+    public int getBlockCount() {
+        int count = 0;
+        for (int[] row : shape) {
+            for (int cell : row) {
+                if (cell > 0) count++;
             }
         }
+        return count;
+    }
 
-        if (!hasOccupiedCell) {
-            throw new IllegalArgumentException("Shape must contain an occupied cell.");
+    public BlockPiece copy() {
+        int[][] newShape = new int[getRows()][getCols()];
+        for (int r = 0; r < getRows(); r++) {
+            System.arraycopy(shape[r], 0, newShape[r], 0, getCols());
         }
-
-        return copy;
+        return new BlockPiece(newShape, color, colorId, name);
     }
 }
